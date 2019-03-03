@@ -4,6 +4,7 @@ train an SFT SRGAN on cityscapes data
 import argparse
 import os
 from tensorboardX import SummaryWriter
+import torch
 import time
 import random
 
@@ -25,11 +26,20 @@ def main():
 
     print(opt)
 
-    # TODO: setting up foldrs for training
+    # TODO: check if this folder setting code works
+    if opt['path']['resume_state']:  # resuming training
+        resume_state = torch.load(opt['path']['resume_state'])
+    else:  # training from scratch
+        resume_state = None
+        util.mkdir_and_rename(opt['path']['experiments_root'])  # rename old folder if exists
+        util.mkdirs((path for key, path in opt['path'].items() if not key == 'experiments_root'
+                     and 'pretrain_model' not in key and 'resume' not in key))
 
     # TODO: deal with the use of "logging" in this crackden
     writer = SummaryWriter()
     writer.add_text('Options', str(opt))
+
+    torch.backends.cudnn.benchmark = True
 
     # create train and val dataloader
     train_loader = cdl.build_custom_dataloader(opt, 'train')
@@ -83,6 +93,8 @@ def main():
 
 
 def validate(current_step, model, opt, val_loader):
+    torch.backends.cudnn.benchmark = False
+
     avg_psnr = 0.0
     idx = 0
     do_save = True
@@ -115,6 +127,8 @@ def validate(current_step, model, opt, val_loader):
         cropped_gt_img = gt_img[crop_size:-crop_size, crop_size:-crop_size, :]
         avg_psnr += util.calculate_psnr(cropped_sr_img * 255, cropped_gt_img * 255)
     avg_psnr = avg_psnr / idx
+
+    torch.backends.cudnn.benchmark = True
 
     return avg_psnr
 
