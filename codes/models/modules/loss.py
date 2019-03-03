@@ -38,6 +38,41 @@ class GANLoss(nn.Module):
         return loss
 
 
+class PatchGANLoss(nn.Module):
+    def __init__(self, gan_type, real_label_val=1.0, fake_label_val=0.0):
+        super(PatchGANLoss, self).__init__()
+        self.gan_type = gan_type.lower()
+        self.register_buffer('real_label', torch.tensor(real_label_val))
+        self.register_buffer('fake_label', torch.tensor(fake_label_val))
+
+        if self.gan_type == 'vanilla':
+            self.loss = nn.BCEWithLogitsLoss()
+        elif self.gan_type == 'lsgan':
+            self.loss = nn.MSELoss()
+        elif self.gan_type == 'wgan-gp':
+
+            def wgan_loss(input, target):
+                # target is boolean
+                return -1 * input.mean() if target else input.mean()
+
+            self.loss = wgan_loss
+        else:
+            raise NotImplementedError('GAN type [{:s}] is not found'.format(self.gan_type))
+
+    def get_target_label(self, input, target_is_real):
+        if target_is_real:
+            target_tensor = self.real_label
+        else:
+            target_tensor = self.fake_label
+
+        return target_tensor.expand_as(input)
+
+    def forward(self, input, target_is_real):
+        target_tensor = self.get_target_label(input, target_is_real)
+        loss = self.loss(input, target_tensor)
+        return loss
+
+
 class GradientPenaltyLoss(nn.Module):
     def __init__(self, device=torch.device('cpu')):
         super(GradientPenaltyLoss, self).__init__()

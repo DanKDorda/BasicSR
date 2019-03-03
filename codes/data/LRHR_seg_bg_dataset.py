@@ -4,15 +4,15 @@ import numpy as np
 import cv2
 import torch
 import torch.utils.data as data
-import data.util as util
+import codes.data.util as util
 
 
 class LRHRSeg_BG_Dataset(data.Dataset):
-    '''
+    """
     Read HR image, segmentation probability map; generate LR image, category for SFTGAN
     also sample general scenes for background
     need to generate LR images on-the-fly
-    '''
+    """
 
     def __init__(self, opt):
         super(LRHRSeg_BG_Dataset, self).__init__()

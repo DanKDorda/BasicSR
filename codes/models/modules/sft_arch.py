@@ -8,10 +8,10 @@ import torch.nn.functional as F
 class SFTLayer(nn.Module):
     def __init__(self):
         super(SFTLayer, self).__init__()
-        self.SFT_scale_conv0 = nn.Conv2d(32, 32, 1)
-        self.SFT_scale_conv1 = nn.Conv2d(32, 64, 1)
-        self.SFT_shift_conv0 = nn.Conv2d(32, 32, 1)
-        self.SFT_shift_conv1 = nn.Conv2d(32, 64, 1)
+        self.SFT_scale_conv0 = nn.Conv2d(64, 64, 1)
+        self.SFT_scale_conv1 = nn.Conv2d(64, 64, 1)
+        self.SFT_shift_conv0 = nn.Conv2d(64, 64, 1)
+        self.SFT_shift_conv1 = nn.Conv2d(64, 64, 1)
 
     def forward(self, x):
         # x[0]: fea; x[1]: cond
@@ -43,7 +43,7 @@ class SFT_Net(nn.Module):
         self.conv0 = nn.Conv2d(3, 64, 3, 1, 1)
 
         sft_branch = []
-        for i in range(16):
+        for i in range(4):
             sft_branch.append(ResBlock_SFT())
         sft_branch.append(SFTLayer())
         sft_branch.append(nn.Conv2d(64, 64, 3, 1, 1))
@@ -62,15 +62,15 @@ class SFT_Net(nn.Module):
         )
 
         self.CondNet = nn.Sequential(
-            nn.Conv2d(8, 128, 4, 4),
+            nn.Conv2d(35, 64, 4, 4),
+            nn.LeakyReLU(0.1, True),
+            nn.Conv2d(64, 128, 1),
             nn.LeakyReLU(0.1, True),
             nn.Conv2d(128, 128, 1),
             nn.LeakyReLU(0.1, True),
             nn.Conv2d(128, 128, 1),
             nn.LeakyReLU(0.1, True),
-            nn.Conv2d(128, 128, 1),
-            nn.LeakyReLU(0.1, True),
-            nn.Conv2d(128, 32, 1)
+            nn.Conv2d(128, 64, 1)
         )
 
     def forward(self, x):

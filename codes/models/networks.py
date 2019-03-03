@@ -4,8 +4,8 @@ import torch
 import torch.nn as nn
 from torch.nn import init
 
-import models.modules.architecture as arch
-import models.modules.sft_arch as sft_arch
+import codes.models.modules.architecture as arch
+import codes.models.modules.sft_arch as sft_arch
 logger = logging.getLogger('base')
 ####################
 # initialize
@@ -129,6 +129,8 @@ def define_D(opt):
             norm_type=opt_net['norm_type'], mode=opt_net['mode'], act_type=opt_net['act_type'])
     elif which_model == 'discriminator_vgg_128_SN':
         netD = arch.Discriminator_VGG_128_SN()
+    elif which_model == 'patch_gan':
+        netD = arch.NLayerDiscriminator(opt_net['in_nc'])
     else:
         raise NotImplementedError('Discriminator model [{:s}] not recognized'.format(which_model))
 

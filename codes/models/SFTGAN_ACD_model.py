@@ -6,9 +6,9 @@ import torch
 import torch.nn as nn
 from torch.optim import lr_scheduler
 
-import models.networks as networks
+import codes.models.networks as networks
 from .base_model import BaseModel
-from models.modules.loss import GANLoss, GradientPenaltyLoss
+from codes.models.modules.loss import GANLoss, GradientPenaltyLoss, PatchGANLoss
 
 logger = logging.getLogger('base')
 
@@ -24,7 +24,7 @@ class SFTGAN_ACD_Model(BaseModel):
             self.netD = networks.define_D(opt).to(self.device)  # D
             self.netG.train()
             self.netD.train()
-        self.load()  # load G and D if needed
+        # self.load()  # load G and D if needed
 
         # define losses, optimizer and scheduler
         if self.is_train:
@@ -114,8 +114,6 @@ class SFTGAN_ACD_Model(BaseModel):
         self.var_L = data['LR'].to(self.device)
         # seg
         self.var_seg = data['seg'].to(self.device)
-        # category
-        self.var_cat = data['category'].long().to(self.device)
 
         if need_HR:  # train or val
             self.var_H = data['HR'].to(self.device)
@@ -137,30 +135,31 @@ class SFTGAN_ACD_Model(BaseModel):
                 l_g_fea = self.l_fea_w * self.cri_fea(fake_fea, real_fea)
                 l_g_total += l_g_fea
             # G gan + cls loss
-            pred_g_fake, cls_g_fake = self.netD(self.fake_H)
+            #pred_g_fake, cls_g_fake = self.netD(self.fake_H)
+            pred_g_fake = self.netD(self.fake_H)
             l_g_gan = self.l_gan_w * self.cri_gan(pred_g_fake, True)
-            l_g_cls = self.l_gan_w * self.cri_ce(cls_g_fake, self.var_cat)
+            # l_g_cls = self.l_gan_w * self.cri_ce(cls_g_fake, self.var_cat)
             l_g_total += l_g_gan
-            l_g_total += l_g_cls
+            # l_g_total += l_g_cls
 
             l_g_total.backward()
             self.optimizer_G_SFT.step()
-        if step > 20000:
+        if step > 2000:
             self.optimizer_G_other.step()
 
         # D
         self.optimizer_D.zero_grad()
         l_d_total = 0
         # real data
-        pred_d_real, cls_d_real = self.netD(self.var_H)
+        pred_d_real = self.netD(self.var_H)
         l_d_real = self.cri_gan(pred_d_real, True)
-        l_d_cls_real = self.cri_ce(cls_d_real, self.var_cat)
+        #l_d_cls_real = self.cri_ce(cls_d_real, self.var_cat)
         # fake data
-        pred_d_fake, cls_d_fake = self.netD(self.fake_H.detach())  # detach to avoid BP to G
+        pred_d_fake = self.netD(self.fake_H.detach())  # detach to avoid BP to G
         l_d_fake = self.cri_gan(pred_d_fake, False)
-        l_d_cls_fake = self.cri_ce(cls_d_fake, self.var_cat)
+        # l_d_cls_fake = self.cri_ce(cls_d_fake, self.var_cat)
 
-        l_d_total = l_d_real + l_d_cls_real + l_d_fake + l_d_cls_fake
+        l_d_total = l_d_real + l_d_fake # + l_d_cls_fake + l_d_cls_real
 
         if self.opt['train']['gan_type'] == 'wgan-gp':
             batch_size = self.var_H.size(0)
@@ -176,6 +175,10 @@ class SFTGAN_ACD_Model(BaseModel):
         l_d_total.backward()
         self.optimizer_D.step()
 
+        #set losses
+        self.loss_d = l_d_total
+        self.loss_g = l_g_total
+
         # set log
         if step % self.D_update_ratio == 0 and step > self.D_init_iters:
             # G
@@ -187,8 +190,8 @@ class SFTGAN_ACD_Model(BaseModel):
         # D
         self.log_dict['l_d_real'] = l_d_real.item()
         self.log_dict['l_d_fake'] = l_d_fake.item()
-        self.log_dict['l_d_cls_real'] = l_d_cls_real.item()
-        self.log_dict['l_d_cls_fake'] = l_d_cls_fake.item()
+        #self.log_dict['l_d_cls_real'] = l_d_cls_real.item()
+        #self.log_dict['l_d_cls_fake'] = l_d_cls_fake.item()
         if self.opt['train']['gan_type'] == 'wgan-gp':
             self.log_dict['l_d_gp'] = l_d_gp.item()
         # D outputs
@@ -203,6 +206,9 @@ class SFTGAN_ACD_Model(BaseModel):
 
     def get_current_log(self):
         return self.log_dict
+
+    def get_current_losses(self):
+        return {'G' : self.loss_g.item(), 'D' : self.loss_d.item()}
 
     def get_current_visuals(self, need_HR=True):
         out_dict = OrderedDict()

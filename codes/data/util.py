@@ -3,7 +3,7 @@ import math
 import pickle
 import random
 import numpy as np
-import lmdb
+#import lmdb
 import torch
 import cv2
 import logging
@@ -31,28 +31,10 @@ def _get_paths_from_images(path):
     return images
 
 
-def _get_paths_from_lmdb(dataroot):
-    env = lmdb.open(dataroot, readonly=True, lock=False, readahead=False, meminit=False)
-    keys_cache_file = os.path.join(dataroot, '_keys_cache.p')
-    logger = logging.getLogger('base')
-    if os.path.isfile(keys_cache_file):
-        logger.info('Read lmdb keys from cache: {}'.format(keys_cache_file))
-        keys = pickle.load(open(keys_cache_file, "rb"))
-    else:
-        with env.begin(write=False) as txn:
-            logger.info('Creating lmdb keys cache: {}'.format(keys_cache_file))
-            keys = [key.decode('ascii') for key, _ in txn.cursor()]
-        pickle.dump(keys, open(keys_cache_file, 'wb'))
-    paths = sorted([key for key in keys if not key.endswith('.meta')])
-    return env, paths
-
-
 def get_image_paths(data_type, dataroot):
     env, paths = None, None
     if dataroot is not None:
-        if data_type == 'lmdb':
-            env, paths = _get_paths_from_lmdb(dataroot)
-        elif data_type == 'img':
+        if data_type == 'img':
             paths = sorted(_get_paths_from_images(dataroot))
         else:
             raise NotImplementedError('data_type [{:s}] is not recognized.'.format(data_type))

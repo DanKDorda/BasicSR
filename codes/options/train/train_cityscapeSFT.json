@@ -1,0 +1,83 @@
+{
+  "name": "cityscapeSFT_long_train",
+  //  please remove "debug_" during training,
+  "use_tb_logger": false,
+  "model": "sftgan",
+  "scale": 4,
+  "n_labels": 35,
+  "gpu_ids": [
+    1
+  ],
+  "datasets": {
+    "train": {
+      "name": "OST",
+      "mode": "LRHRseg_bg",
+      // "dataroot_HR": "/mnt/SSD/xtwang/BasicSR_datasets/OST/train/img",
+      // "dataroot_HR_bg": "/mnt/SSD/xtwang/BasicSR_datasets/DIV2K800/DIV2K800_sub",
+      "dataroot_LR": null,
+      "subset_file": null,
+      "use_shuffle": true,
+      "n_workers": 8,
+      "batch_size": 4,
+      "HR_size": 96,
+      "use_flip": true,
+      "use_rot": false
+    },
+    "val": {
+      "name": "val_OST300_part",
+      "mode": "LRHRseg_bg",
+      // "dataroot_HR": "/mnt/SSD/xtwang/BasicSR_datasets/OST/val/img",
+      "dataroot_LR": null
+    }
+  },
+  "path": {
+    "root": "/home/daniel/storage/BasicSR",
+    "resume_state": null,
+    "pretrain_model_G": "/home/daniel/storage/BasicSR/experiments/pretrained_models/sft_net_ini.pth"
+  },
+  "network_G": {
+    "which_model_G": "sft_arch"
+  },
+  "network_D": {
+    "which_model_D": "discriminator_vgg_96",
+    "in_nc": 3,
+    "norm_type": "batch",
+    "act_type": "leakyrelu",
+    "mode": "CNA",
+    "nf": 64
+  },
+  "train": {
+    "lr_G": 1e-3,
+    "weight_decay_G": 0,
+    "beta1_G": 0.9,
+    "lr_D": 1e-4,
+    "weight_decay_D": 0,
+    "beta1_D": 0.9,
+    "lr_scheme": "MultiStepLR",
+    "lr_steps": [
+      50000,
+      100000,
+      150000,
+      200000
+    ],
+    "lr_gamma": 0.5,
+    "pixel_criterion": "l1",
+    "pixel_weight": 0.5,
+    "feature_criterion": "l1",
+    "feature_weight": 0.5,
+    "gan_type": "vanilla",
+    "gan_weight": 5e-3,
+
+    //for wgan-gp
+    // , "D_update_ratio": 1
+    // , "D_init_iters": 0
+    // , "gp_weigth": 10,
+    "manual_seed": 0,
+    "niter": 6e5,
+    "val_freq": 2e3
+  },
+  "logger": {
+    "print_freq": 200,
+    "save_checkpoint_freq": 2e3
+  }
+}
